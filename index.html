@@ -9,6 +9,12 @@
     content="Reserva tu aventura con Mountain Soldiers. Comprueba disponibilidad, bloquea tu plaza y confirma tu salida online."
   />
   <link rel="stylesheet" href="style.css" />
+
+  <!-- intl-tel-input -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.0/build/css/intlTelInput.css"
+  />
 </head>
 <body>
   <main class="page-shell">
@@ -47,7 +53,7 @@
             Elige tu aventura, revisa disponibilidad y da el primer paso para vivirla.
           </p>
 
-          <form id="booking-form">
+          <form id="booking-form" novalidate>
             <div class="grid">
               <div class="field field-full">
                 <label for="route_slug">Aventura</label>
@@ -104,15 +110,47 @@
                 <input id="customer_name" name="customer_name" type="text" required />
               </div>
 
-              <div class="field">
+              <div class="field field-full">
                 <label for="customer_phone">Teléfono</label>
-                <input id="customer_phone" name="customer_phone" type="tel" placeholder="+34600111222" required />
+                <input
+                  id="customer_phone"
+                  name="customer_phone"
+                  type="tel"
+                  placeholder="Tu número de teléfono"
+                  autocomplete="tel"
+                  required
+                />
+                <p class="field-hint">
+                  Introduce tu teléfono móvil con el prefijo correcto. Lo normalizaremos automáticamente.
+                </p>
               </div>
 
-              <div class="field">
+              <div class="field field-full">
                 <label for="customer_email">Email</label>
                 <input id="customer_email" name="customer_email" type="email" required />
               </div>
+            </div>
+
+            <div class="consent-box">
+              <label class="consent-item">
+                <input type="checkbox" id="privacy_consent" name="privacy_consent" required />
+                <span>
+                  He leído y acepto la
+                  <a
+                    href="https://www.mountainsoldiers.es/politica-de-privacidad"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >política de privacidad</a>
+                  y el tratamiento de mis datos para gestionar mi reserva.
+                </span>
+              </label>
+
+              <label class="consent-item">
+                <input type="checkbox" id="marketing_consent" name="marketing_consent" />
+                <span>
+                  Acepto recibir información y comunicaciones comerciales de Mountain Soldiers.
+                </span>
+              </label>
             </div>
 
             <div class="actions">
@@ -179,6 +217,7 @@
     </section>
   </main>
 
-  <script src="app.js?v=4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.0/build/js/intlTelInput.min.js"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
