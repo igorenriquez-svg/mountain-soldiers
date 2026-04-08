@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reserva tu aventura | Mountain Soldiers</title>
+  <meta
+    name="description"
+    content="Reserva tu aventura con Mountain Soldiers. Comprueba disponibilidad, bloquea tu plaza y confirma tu salida online."
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero-section">
+      <div class="hero-overlay"></div>
+
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Mountain Soldiers</p>
+          <h1>Reserva tu próxima aventura</h1>
+          <p class="subtitle">
+            Barrancos, vías ferratas y experiencias brutales en la montaña.
+            Comprueba disponibilidad y bloquea tu plaza en pocos pasos.
+          </p>
+
+          <div class="hero-points">
+            <div class="hero-point">
+              <span class="hero-point-icon">✓</span>
+              <span>Reserva rápida y clara</span>
+            </div>
+            <div class="hero-point">
+              <span class="hero-point-icon">✓</span>
+              <span>Confirmación segura</span>
+            </div>
+            <div class="hero-point">
+              <span class="hero-point-icon">✓</span>
+              <span>Experiencias guiadas de verdad</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="booking-panel">
+          <div class="panel-badge">Plazas limitadas</div>
+          <h2>Bloquea tu plaza ahora</h2>
+          <p class="panel-copy">
+            Elige tu aventura, revisa disponibilidad y da el primer paso para vivirla.
+          </p>
+
+          <form id="booking-form">
+            <div class="grid">
+              <div class="field field-full">
+                <label for="route_slug">Aventura</label>
+                <select id="route_slug" name="route_slug" required>
+                  <option value="">Selecciona una ruta</option>
+
+                  <option value="cala-moli" data-activity="via_ferrata">Cala Molí</option>
+                  <option value="baumes-corcades" data-activity="via_ferrata">Baumes Corcades</option>
+                  <option value="teresina" data-activity="via_ferrata">Teresina</option>
+                  <option value="roca-de-la-creu" data-activity="via_ferrata">Roca de la Creu</option>
+                  <option value="neret-de-les-dames" data-activity="via_ferrata">Neret de les Dames</option>
+                  <option value="canal-de-las-damas" data-activity="via_ferrata">Canal de las Damas</option>
+
+                  <option value="forat-del-buli" data-activity="barranquismo">Forat del Bulí</option>
+                  <option value="barranco-nuria" data-activity="barranquismo">Barranco Núria</option>
+                  <option value="barranco-inferior-nuria" data-activity="barranquismo">Barranco Inferior Núria</option>
+                  <option value="barranco-estrets-del-castellar" data-activity="barranquismo">Estrets del Castellar</option>
+                  <option value="barranco-sant-anio" data-activity="barranquismo">Sant Aniol</option>
+                  <option value="barranco-gorgas-negras" data-activity="barranquismo">Gorgas Negras</option>
+
+                  <option value="raquetas-masella" data-activity="raquetas_nieve">Raquetas Masella</option>
+                  <option value="raquetas-nuria" data-activity="raquetas_nieve">Raquetas Vall de Núria</option>
+                  <option value="raquetas-nocturnas" data-activity="raquetas_nieve">Raquetas Nocturnas</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="activity_type">Actividad</label>
+                <input id="activity_type" name="activity_type" type="text" readonly />
+              </div>
+
+              <div class="field">
+                <label for="date">Fecha</label>
+                <input id="date" name="date" type="date" required />
+              </div>
+
+              <div class="field">
+                <label for="pax">Participantes</label>
+                <input id="pax" name="pax" type="number" min="1" step="1" value="2" required />
+              </div>
+
+              <div class="field">
+                <label for="language">Idioma</label>
+                <select id="language" name="language" required>
+                  <option value="es">Español</option>
+                  <option value="ca">Català</option>
+                  <option value="en">English</option>
+                  <option value="fr">Français</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="customer_name">Nombre completo</label>
+                <input id="customer_name" name="customer_name" type="text" required />
+              </div>
+
+              <div class="field">
+                <label for="customer_phone">Teléfono</label>
+                <input id="customer_phone" name="customer_phone" type="tel" placeholder="+34600111222" required />
+              </div>
+
+              <div class="field">
+                <label for="customer_email">Email</label>
+                <input id="customer_email" name="customer_email" type="email" required />
+              </div>
+            </div>
+
+            <div class="actions">
+              <button id="check-btn" type="submit" class="primary-button">
+                Ver disponibilidad y reservar
+              </button>
+            </div>
+
+            <p class="microcopy">
+              Consultar disponibilidad no implica pago inmediato. Primero revisaremos si hay plazas para tu salida.
+            </p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="container content-grid">
+        <div class="main-column">
+          <section class="card result-card">
+            <div class="section-head">
+              <p class="section-kicker">Estado de tu reserva</p>
+              <h2>Resultado</h2>
+            </div>
+
+            <div id="result-box" class="result-box empty">
+              <div class="result-pill">Pendiente</div>
+              <h3 class="result-title">Todavía no has consultado disponibilidad</h3>
+              <p class="result-copy">
+                Completa el formulario y te mostraremos si tu aventura está disponible para la fecha elegida.
+              </p>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side-column">
+          <section class="card info-card">
+            <p class="section-kicker">Por qué reservar aquí</p>
+            <h2>Tu aventura empieza ahora</h2>
+            <div class="info-list">
+              <div class="info-item">
+                <strong>Proceso claro</strong>
+                <span>Consulta disponibilidad y avanza al pago sin fricción.</span>
+              </div>
+              <div class="info-item">
+                <strong>Plaza temporalmente bloqueada</strong>
+                <span>Cuando haya disponibilidad, podrás asegurar tu hueco antes de pagar.</span>
+              </div>
+              <div class="info-item">
+                <strong>Pago seguro</strong>
+                <span>La confirmación final se realiza a través de Stripe.</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="card debug-card">
+            <details>
+              <summary>Debug técnico</summary>
+              <pre id="debug-box" class="debug-box">Esperando petición...</pre>
+            </details>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js?v=4"></script>
+</body>
+</html>
