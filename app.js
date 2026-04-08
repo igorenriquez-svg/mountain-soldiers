@@ -200,11 +200,18 @@ function initPhoneInput() {
     initialCountry: "es",
     preferredCountries: ["es", "fr", "gb", "us", "it", "de"],
     separateDialCode: true,
-    nationalMode: false,
-    autoPlaceholder: "polite",
-    formatOnDisplay: true,
+    nationalMode: true,
+    autoPlaceholder: "aggressive",
+    formatAsYouType: true,
     strictMode: false,
     useFullscreenPopup: true,
+    i18n: {
+      searchPlaceholder: "Buscar país",
+      zeroSearchResults: "No se han encontrado resultados",
+      oneSearchResult: "1 resultado encontrado",
+      multipleSearchResults: "${count} resultados encontrados",
+      noCountrySelected: "Ningún país seleccionado",
+    },
   });
 }
 
@@ -218,15 +225,34 @@ function getNormalizedPhoneNumber() {
   if (phoneInputInstance) {
     const fullNumber = phoneInputInstance.getNumber();
 
+    if (!phoneInputInstance.isValidNumber()) {
+      throw new Error("Introduce un número de teléfono válido.");
+    }
+
     if (fullNumber && fullNumber.trim()) {
-      return fullNumber.trim();
+      return fullNumber.replace(/\D/g, "");
     }
   }
 
-  return rawValue;
+  const digitsOnly = rawValue.replace(/\D/g, "");
+
+  if (!digitsOnly) {
+    throw new Error("Introduce un teléfono válido.");
+  }
+
+  return digitsOnly;
 }
 
-function validateFormBeforeSubmit({ route_slug, activity_type, date, pax, customer_name, customer_phone, customer_email, language }) {
+function validateFormBeforeSubmit({
+  route_slug,
+  activity_type,
+  date,
+  pax,
+  customer_name,
+  customer_phone,
+  customer_email,
+  language,
+}) {
   if (!route_slug || !activity_type || !date || !pax) {
     throw new Error("Faltan campos obligatorios.");
   }
@@ -415,21 +441,17 @@ function attachHoldButtonHandler() {
         customer_email: document.getElementById("customer_email").value.trim(),
         language: document.getElementById("language").value,
         source: "web",
+        privacy_accepted: privacyConsentInput?.checked === true,
+        privacy_accepted_at: new Date().toISOString(),
+        marketing_accepted: marketingConsentInput?.checked === true,
       };
 
       renderDebug("CREATE HOLD REQUEST", {
         endpoint: API_URL_CREATE_HOLD,
         payload,
-        legal: {
-          privacy_accepted: privacyConsentInput?.checked === true,
-          marketing_accepted: marketingConsentInput?.checked === true,
-        },
       });
 
       const { raw, normalized } = await createHold(payload);
-
-      console.log("CREATE HOLD RAW:", raw);
-      console.log("CREATE HOLD NORMALIZED:", normalized);
 
       renderDebug("CREATE HOLD RESPONSE", {
         raw,
@@ -486,9 +508,6 @@ function attachCheckoutButtonHandler() {
       });
 
       const { raw, normalized } = await createCheckoutSession(payload);
-
-      console.log("CREATE CHECKOUT RAW:", raw);
-      console.log("CREATE CHECKOUT NORMALIZED:", normalized);
 
       renderDebug("CREATE CHECKOUT SESSION RESPONSE", {
         raw,
@@ -589,8 +608,6 @@ form.addEventListener("submit", async (event) => {
     });
 
     const data = await checkAvailability(payload);
-
-    console.log("CHECK AVAILABILITY RESPONSE:", data);
 
     availabilityData = data;
     renderAvailabilityResult(data);
