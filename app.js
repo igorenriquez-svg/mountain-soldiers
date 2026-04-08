@@ -10,7 +10,6 @@ const API_URL_CREATE_CHECKOUT =
 let availabilityData = null;
 let holdData = null;
 let checkoutData = null;
-let phoneInputInstance = null;
 
 const form = document.getElementById("booking-form");
 const routeSelect = document.getElementById("route_slug");
@@ -18,7 +17,11 @@ const activityInput = document.getElementById("activity_type");
 const resultBox = document.getElementById("result-box");
 const debugBox = document.getElementById("debug-box");
 const checkBtn = document.getElementById("check-btn");
-const phoneInput = document.getElementById("customer_phone");
+
+const phoneCountrySelect = document.getElementById("phone_country");
+const phoneLocalInput = document.getElementById("customer_phone_local");
+const phoneHiddenInput = document.getElementById("customer_phone");
+
 const privacyConsentInput = document.getElementById("privacy_consent");
 const marketingConsentInput = document.getElementById("marketing_consent");
 
@@ -43,10 +46,8 @@ function formatActivityLabel(activityType) {
 
 function formatApiDate(dateString) {
   if (!dateString) return "-";
-
   const parts = String(dateString).split("-");
   if (parts.length !== 3) return dateString;
-
   const [yyyy, mm, dd] = parts;
   return `${dd}/${mm}/${yyyy}`;
 }
@@ -124,7 +125,7 @@ function normalizeCheckoutResponse(data) {
 async function safeJson(response, endpointName) {
   try {
     return await response.json();
-  } catch (error) {
+  } catch {
     throw new Error(`El endpoint de ${endpointName} no devolvió JSON válido.`);
   }
 }
@@ -162,11 +163,9 @@ async function createHold(payload) {
     throw new Error(rawData?.message || `HTTP ${response.status}`);
   }
 
-  const normalized = normalizeHoldResponse(rawData);
-
   return {
     raw: rawData,
-    normalized,
+    normalized: normalizeHoldResponse(rawData),
   };
 }
 
@@ -185,62 +184,40 @@ async function createCheckoutSession(payload) {
     throw new Error(rawData?.message || `HTTP ${response.status}`);
   }
 
-  const normalized = normalizeCheckoutResponse(rawData);
-
   return {
     raw: rawData,
-    normalized,
+    normalized: normalizeCheckoutResponse(rawData),
   };
 }
 
-function initPhoneInput() {
-  if (!window.intlTelInput || !phoneInput) return;
-
-  phoneInputInstance = window.intlTelInput(phoneInput, {
-    initialCountry: "es",
-    preferredCountries: ["es", "fr", "gb", "us", "it", "de"],
-    separateDialCode: true,
-    nationalMode: true,
-    autoPlaceholder: "aggressive",
-    formatAsYouType: true,
-    strictMode: false,
-    useFullscreenPopup: true,
-    i18n: {
-      searchPlaceholder: "Buscar país",
-      zeroSearchResults: "No se han encontrado resultados",
-      oneSearchResult: "1 resultado encontrado",
-      multipleSearchResults: "${count} resultados encontrados",
-      noCountrySelected: "Ningún país seleccionado",
-    },
-  });
+function normalizeLocalPhoneDigits(value) {
+  return String(value || "").replace(/\D/g, "");
 }
 
 function getNormalizedPhoneNumber() {
-  const rawValue = phoneInput?.value?.trim() || "";
+  const countryCode = String(phoneCountrySelect?.value || "").replace(/\D/g, "");
+  let localNumber = normalizeLocalPhoneDigits(phoneLocalInput?.value || "");
 
-  if (!rawValue) {
+  if (!countryCode) {
+    throw new Error("Selecciona un prefijo de teléfono válido.");
+  }
+
+  if (!localNumber) {
     throw new Error("Introduce un teléfono válido.");
   }
 
-  if (phoneInputInstance) {
-    const fullNumber = phoneInputInstance.getNumber();
-
-    if (!phoneInputInstance.isValidNumber()) {
-      throw new Error("Introduce un número de teléfono válido.");
-    }
-
-    if (fullNumber && fullNumber.trim()) {
-      return fullNumber.replace(/\D/g, "");
-    }
+  while (localNumber.startsWith("0")) {
+    localNumber = localNumber.slice(1);
   }
 
-  const digitsOnly = rawValue.replace(/\D/g, "");
+  const fullNumber = `${countryCode}${localNumber}`;
 
-  if (!digitsOnly) {
+  if (!/^\d{8,15}$/.test(fullNumber)) {
     throw new Error("Introduce un teléfono válido.");
   }
 
-  return digitsOnly;
+  phoneHiddenInput.value = fullNumber;
+  return fullNumber;
 }
 
 function validateFormBeforeSubmit({
@@ -621,6 +598,13 @@ form.addEventListener("submit", async (event) => {
 });
 
 routeSelect.addEventListener("change", setActivityFromRoute);
+phoneCountrySelect.addEventListener("change", getNormalizedPhoneNumber);
+phoneLocalInput.addEventListener("input", () => {
+  try {
+    getNormalizedPhoneNumber();
+  } catch {
+    phoneHiddenInput.value = "";
+  }
+});
 
-initPhoneInput();
 setActivityFromRoute();
