@@ -9,11 +9,6 @@
     content="Reserva tu aventura con Mountain Soldiers. Comprueba disponibilidad, bloquea tu plaza y confirma tu salida online."
   />
   <link rel="stylesheet" href="style.css" />
-
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/build/css/intlTelInput.css"
-  />
 </head>
 <body>
   <main class="page-shell">
@@ -110,19 +105,34 @@
               </div>
 
               <div class="field field-full">
-                <label for="customer_phone">Teléfono</label>
-                <div class="phone-field-shell">
+                <label for="customer_phone_local">Teléfono</label>
+                <div class="phone-combo">
+                  <select id="phone_country" name="phone_country" class="phone-country" required>
+                    <option value="34" selected>🇪🇸 +34</option>
+                    <option value="33">🇫🇷 +33</option>
+                    <option value="44">🇬🇧 +44</option>
+                    <option value="39">🇮🇹 +39</option>
+                    <option value="49">🇩🇪 +49</option>
+                    <option value="351">🇵🇹 +351</option>
+                    <option value="1">🇺🇸 +1</option>
+                    <option value="32">🇧🇪 +32</option>
+                    <option value="31">🇳🇱 +31</option>
+                    <option value="41">🇨🇭 +41</option>
+                  </select>
+
                   <input
-                    id="customer_phone"
-                    name="customer_phone"
+                    id="customer_phone_local"
+                    name="customer_phone_local"
                     type="tel"
-                    placeholder="612 34 56 78"
-                    autocomplete="tel"
+                    inputmode="numeric"
+                    autocomplete="tel-national"
+                    placeholder="633 67 46 56"
                     required
                   />
                 </div>
+                <input id="customer_phone" name="customer_phone" type="hidden" />
                 <p class="field-hint">
-                  Selecciona tu país e introduce tu número. Lo enviaremos normalizado con prefijo internacional.
+                  Te pedimos un número válido para enviarte la confirmación y los detalles de tu reserva.
                 </p>
               </div>
 
@@ -218,8 +228,6 @@
     </section>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/build/js/intlTelInput.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/build/js/utils.js"></script>
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
