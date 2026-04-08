@@ -10,6 +10,7 @@ const API_URL_CREATE_CHECKOUT =
 let availabilityData = null;
 let holdData = null;
 let checkoutData = null;
+let phoneInputInstance = null;
 
 const form = document.getElementById("booking-form");
 const routeSelect = document.getElementById("route_slug");
@@ -17,6 +18,9 @@ const activityInput = document.getElementById("activity_type");
 const resultBox = document.getElementById("result-box");
 const debugBox = document.getElementById("debug-box");
 const checkBtn = document.getElementById("check-btn");
+const phoneInput = document.getElementById("customer_phone");
+const privacyConsentInput = document.getElementById("privacy_consent");
+const marketingConsentInput = document.getElementById("marketing_consent");
 
 const ACTIVITY_LABELS = {
   via_ferrata: "Vía ferrata",
@@ -98,6 +102,8 @@ function renderError(message, data = null) {
   if (data) {
     renderDebug("ERROR RESPONSE", data);
   }
+
+  resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function normalizeApiResponse(data) {
@@ -187,6 +193,65 @@ async function createCheckoutSession(payload) {
   };
 }
 
+function initPhoneInput() {
+  if (!window.intlTelInput || !phoneInput) return;
+
+  phoneInputInstance = window.intlTelInput(phoneInput, {
+    initialCountry: "es",
+    preferredCountries: ["es", "fr", "gb", "us", "it", "de"],
+    separateDialCode: true,
+    nationalMode: false,
+    autoPlaceholder: "polite",
+    formatOnDisplay: true,
+    strictMode: false,
+    useFullscreenPopup: true,
+  });
+}
+
+function getNormalizedPhoneNumber() {
+  const rawValue = phoneInput?.value?.trim() || "";
+
+  if (!rawValue) {
+    throw new Error("Introduce un teléfono válido.");
+  }
+
+  if (phoneInputInstance) {
+    const fullNumber = phoneInputInstance.getNumber();
+
+    if (fullNumber && fullNumber.trim()) {
+      return fullNumber.trim();
+    }
+  }
+
+  return rawValue;
+}
+
+function validateFormBeforeSubmit({ route_slug, activity_type, date, pax, customer_name, customer_phone, customer_email, language }) {
+  if (!route_slug || !activity_type || !date || !pax) {
+    throw new Error("Faltan campos obligatorios.");
+  }
+
+  if (!customer_name) {
+    throw new Error("Introduce tu nombre completo.");
+  }
+
+  if (!customer_phone) {
+    throw new Error("Introduce un teléfono válido.");
+  }
+
+  if (!customer_email) {
+    throw new Error("Introduce tu email.");
+  }
+
+  if (!language) {
+    throw new Error("Selecciona un idioma.");
+  }
+
+  if (!privacyConsentInput?.checked) {
+    throw new Error("Debes aceptar la política de privacidad para continuar.");
+  }
+}
+
 function renderAvailabilityResult(data) {
   const status = String(data?.status || "").trim();
 
@@ -204,6 +269,7 @@ function renderAvailabilityResult(data) {
       <p class="helper-text">Prueba con otra fecha o con otra aventura.</p>
     `;
     renderDebug("CHECK AVAILABILITY RESPONSE", data);
+    resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
 
@@ -271,6 +337,7 @@ function renderAvailabilityResult(data) {
 
   renderDebug("CHECK AVAILABILITY RESPONSE", data);
   attachHoldButtonHandler();
+  resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderHoldResult(data) {
@@ -335,6 +402,8 @@ function attachHoldButtonHandler() {
       holdBtn.disabled = true;
       holdBtn.textContent = "Bloqueando plaza...";
 
+      const customer_phone = getNormalizedPhoneNumber();
+
       const payload = {
         status: availabilityData.status,
         route_slug: availabilityData.route_slug,
@@ -342,7 +411,7 @@ function attachHoldButtonHandler() {
         start_time: availabilityData.start_time,
         pax: Number(document.getElementById("pax").value),
         customer_name: document.getElementById("customer_name").value.trim(),
-        customer_phone: document.getElementById("customer_phone").value.trim(),
+        customer_phone,
         customer_email: document.getElementById("customer_email").value.trim(),
         language: document.getElementById("language").value,
         source: "web",
@@ -351,6 +420,10 @@ function attachHoldButtonHandler() {
       renderDebug("CREATE HOLD REQUEST", {
         endpoint: API_URL_CREATE_HOLD,
         payload,
+        legal: {
+          privacy_accepted: privacyConsentInput?.checked === true,
+          marketing_accepted: marketingConsentInput?.checked === true,
+        },
       });
 
       const { raw, normalized } = await createHold(payload);
@@ -460,58 +533,67 @@ form.addEventListener("submit", async (event) => {
 
   setActivityFromRoute();
 
-  const route_slug = routeSelect.value.trim();
-  const activity_type = activityInput.dataset.rawValue?.trim() || "";
-  const date = document.getElementById("date").value;
-  const pax = Number(document.getElementById("pax").value);
-  const customer_name = document.getElementById("customer_name").value.trim();
-  const customer_phone = document.getElementById("customer_phone").value.trim();
-  const customer_email = document.getElementById("customer_email").value.trim();
-  const language = document.getElementById("language").value;
+  try {
+    const route_slug = routeSelect.value.trim();
+    const activity_type = activityInput.dataset.rawValue?.trim() || "";
+    const date = document.getElementById("date").value;
+    const pax = Number(document.getElementById("pax").value);
+    const customer_name = document.getElementById("customer_name").value.trim();
+    const customer_phone = getNormalizedPhoneNumber();
+    const customer_email = document.getElementById("customer_email").value.trim();
+    const language = document.getElementById("language").value;
 
-  if (!route_slug || !activity_type || !date || !pax) {
-    renderError("Faltan campos obligatorios.");
-    return;
-  }
-
-  const payload = {
-    activity_type,
-    route_slug,
-    date,
-    pax,
-    group_type: "shared",
-    language,
-    source: "web",
-  };
-
-  checkBtn.disabled = true;
-  checkBtn.textContent = "Consultando plazas...";
-
-  resultBox.className = "result-box empty";
-  resultBox.innerHTML = `
-    <div class="result-pill">Comprobando</div>
-    <h3 class="result-title">Estamos buscando disponibilidad</h3>
-    <p class="result-copy">Un momento, estamos preparando tu aventura…</p>
-  `;
-
-  renderDebug("CHECK AVAILABILITY REQUEST", {
-    endpoint: API_URL_CHECK_AVAILABILITY,
-    payload,
-    customer_preview: {
+    validateFormBeforeSubmit({
+      route_slug,
+      activity_type,
+      date,
+      pax,
       customer_name,
       customer_phone,
       customer_email,
-    },
-  });
+      language,
+    });
 
-  try {
+    const payload = {
+      activity_type,
+      route_slug,
+      date,
+      pax,
+      group_type: "shared",
+      language,
+      source: "web",
+    };
+
+    checkBtn.disabled = true;
+    checkBtn.textContent = "Consultando plazas...";
+
+    resultBox.className = "result-box empty";
+    resultBox.innerHTML = `
+      <div class="result-pill">Comprobando</div>
+      <h3 class="result-title">Estamos buscando disponibilidad</h3>
+      <p class="result-copy">Un momento, estamos preparando tu aventura…</p>
+    `;
+
+    renderDebug("CHECK AVAILABILITY REQUEST", {
+      endpoint: API_URL_CHECK_AVAILABILITY,
+      payload,
+      customer_preview: {
+        customer_name,
+        customer_phone,
+        customer_email,
+      },
+      legal: {
+        privacy_accepted: privacyConsentInput?.checked === true,
+        marketing_accepted: marketingConsentInput?.checked === true,
+      },
+    });
+
     const data = await checkAvailability(payload);
 
     console.log("CHECK AVAILABILITY RESPONSE:", data);
 
     availabilityData = data;
     renderAvailabilityResult(data);
-    resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     renderError(error.message);
     console.error("CHECK AVAILABILITY ERROR:", error);
@@ -522,4 +604,6 @@ form.addEventListener("submit", async (event) => {
 });
 
 routeSelect.addEventListener("change", setActivityFromRoute);
+
+initPhoneInput();
 setActivityFromRoute();
