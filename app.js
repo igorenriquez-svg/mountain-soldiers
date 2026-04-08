@@ -212,7 +212,11 @@ function getNormalizedPhoneNumber() {
 
   const fullNumber = `${countryCode}${localNumber}`;
 
-  if (!/^\d{8,15}$/.test(fullNumber)) {
+  if (!/^\d+$/.test(fullNumber)) {
+    throw new Error("Introduce un teléfono válido.");
+  }
+
+  if (fullNumber.length < 9 || fullNumber.length > 15) {
     throw new Error("Introduce un teléfono válido.");
   }
 
@@ -598,10 +602,31 @@ form.addEventListener("submit", async (event) => {
 });
 
 routeSelect.addEventListener("change", setActivityFromRoute);
-phoneCountrySelect.addEventListener("change", getNormalizedPhoneNumber);
+
+phoneCountrySelect.addEventListener("change", () => {
+  try {
+    if (phoneLocalInput.value.trim()) {
+      getNormalizedPhoneNumber();
+    } else {
+      phoneHiddenInput.value = "";
+    }
+  } catch {
+    phoneHiddenInput.value = "";
+  }
+});
+
 phoneLocalInput.addEventListener("input", () => {
   try {
-    getNormalizedPhoneNumber();
+    const cleaned = phoneLocalInput.value.replace(/[^\d\s()-]/g, "");
+    if (cleaned !== phoneLocalInput.value) {
+      phoneLocalInput.value = cleaned;
+    }
+
+    if (phoneLocalInput.value.trim()) {
+      getNormalizedPhoneNumber();
+    } else {
+      phoneHiddenInput.value = "";
+    }
   } catch {
     phoneHiddenInput.value = "";
   }
