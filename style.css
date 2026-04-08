@@ -234,6 +234,13 @@ input[readonly] {
   color: #d8dfd5;
 }
 
+.field-hint {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 .actions {
   margin-top: 22px;
 }
@@ -284,6 +291,46 @@ button:disabled {
 
 .microcopy {
   margin: 14px 0 0;
+}
+
+.consent-box {
+  margin-top: 20px;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.consent-item {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 12px;
+  align-items: start;
+  color: var(--muted);
+  line-height: 1.55;
+  cursor: pointer;
+}
+
+.consent-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: auto;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: var(--primary);
+  border-radius: 4px;
+}
+
+.consent-item a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.consent-item a:hover {
+  text-decoration: underline;
 }
 
 .content-section {
@@ -493,6 +540,46 @@ button:disabled {
   margin-bottom: 24px;
 }
 
+/* intl-tel-input overrides */
+.iti {
+  width: 100%;
+}
+
+.iti__selected-country-primary,
+.iti input {
+  color: var(--text);
+}
+
+.iti input {
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+  padding-left: 96px !important;
+  min-height: 54px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.iti--inline-dropdown .iti__dropdown-content {
+  background: #111512;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.iti__country {
+  color: #fff;
+}
+
+.iti__country:hover,
+.iti__country.iti__highlight {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.iti__search-input {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 @media (max-width: 980px) {
   .hero-grid,
   .content-grid {
@@ -543,5 +630,9 @@ button:disabled {
 
   .container {
     width: min(100%, calc(100% - 20px));
+  }
+
+  .consent-item {
+    grid-template-columns: 18px 1fr;
   }
 }
