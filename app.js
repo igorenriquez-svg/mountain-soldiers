@@ -7,9 +7,13 @@ const API_URL_CREATE_HOLD =
 const API_URL_CREATE_CHECKOUT =
   "https://primary-production-beb9e.up.railway.app/webhook/create-checkout-session";
 
+const CONSENT_TEXT_VERSION = "v1";
+const IP_LOOKUP_URL = "https://api.ipify.org?format=json";
+
 let availabilityData = null;
 let holdData = null;
 let checkoutData = null;
+let clientIpAddress = "";
 
 const form = document.getElementById("booking-form");
 const routeSelect = document.getElementById("route_slug");
@@ -190,6 +194,27 @@ async function createCheckoutSession(payload) {
   };
 }
 
+async function getClientIpAddress() {
+  if (clientIpAddress) return clientIpAddress;
+
+  try {
+    const response = await fetch(IP_LOOKUP_URL, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const data = await response.json();
+    clientIpAddress = String(data?.ip || "").trim();
+    return clientIpAddress;
+  } catch {
+    return "";
+  }
+}
+
 function normalizeLocalPhoneDigits(value) {
   return String(value || "").replace(/\D/g, "");
 }
@@ -257,6 +282,31 @@ function validateFormBeforeSubmit({
   if (!privacyConsentInput?.checked) {
     throw new Error("Debes aceptar la política de privacidad para continuar.");
   }
+}
+
+function buildCustomerActivityHistory({
+  reservationId = "",
+  departureId = "",
+  routeSlug = "",
+  activityType = "",
+  bookingDate = "",
+  amountTotal = 0,
+  eventType = "hold_created",
+}) {
+  const history = [
+    {
+      type: eventType,
+      reservation_id: reservationId,
+      departure_id: departureId,
+      route_slug: routeSlug,
+      activity_type: activityType,
+      date: bookingDate,
+      amount_total: Number(amountTotal || 0),
+      created_at: new Date().toISOString(),
+    },
+  ];
+
+  return JSON.stringify(history);
 }
 
 function renderAvailabilityResult(data) {
@@ -410,6 +460,10 @@ function attachHoldButtonHandler() {
       holdBtn.textContent = "Bloqueando plaza...";
 
       const customer_phone = getNormalizedPhoneNumber();
+      const gdprConsentDate = privacyConsentInput?.checked ? new Date().toISOString() : "";
+      const marketingConsentDate = marketingConsentInput?.checked ? new Date().toISOString() : "";
+      const ipAddress = await getClientIpAddress();
+      const userAgent = navigator.userAgent || "";
 
       const payload = {
         status: availabilityData.status,
@@ -422,9 +476,22 @@ function attachHoldButtonHandler() {
         customer_email: document.getElementById("customer_email").value.trim(),
         language: document.getElementById("language").value,
         source: "web",
-        privacy_accepted: privacyConsentInput?.checked === true,
-        privacy_accepted_at: new Date().toISOString(),
-        marketing_accepted: marketingConsentInput?.checked === true,
+
+        gdpr_consent: privacyConsentInput?.checked ? "true" : "false",
+        gdpr_consent_date: gdprConsentDate,
+        marketing_consent: marketingConsentInput?.checked ? "true" : "false",
+        marketing_consent_date: marketingConsentDate,
+        consent_text_version: CONSENT_TEXT_VERSION,
+
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        customer_activity_history: buildCustomerActivityHistory({
+          routeSlug: availabilityData.route_slug,
+          activityType: activityInput.dataset.rawValue?.trim() || "",
+          bookingDate: availabilityData.date,
+          amountTotal: 0,
+          eventType: "hold_created",
+        }),
       };
 
       renderDebug("CREATE HOLD REQUEST", {
@@ -446,6 +513,16 @@ function attachHoldButtonHandler() {
       if (!normalized.hold_id) {
         throw new Error("La respuesta de create hold no incluye hold_id.");
       }
+
+      payload.customer_activity_history = buildCustomerActivityHistory({
+        reservationId: normalized.reservation_id,
+        departureId: normalized.departure_id,
+        routeSlug: availabilityData.route_slug,
+        activityType: activityInput.dataset.rawValue?.trim() || "",
+        bookingDate: availabilityData.date,
+        amountTotal: 0,
+        eventType: "hold_created",
+      });
 
       holdData = normalized;
       renderHoldResult(normalized);
@@ -583,8 +660,9 @@ form.addEventListener("submit", async (event) => {
         customer_email,
       },
       legal: {
-        privacy_accepted: privacyConsentInput?.checked === true,
-        marketing_accepted: marketingConsentInput?.checked === true,
+        gdpr_consent: privacyConsentInput?.checked ? "true" : "false",
+        marketing_consent: marketingConsentInput?.checked ? "true" : "false",
+        consent_text_version: CONSENT_TEXT_VERSION,
       },
     });
 
@@ -633,3 +711,4 @@ phoneLocalInput.addEventListener("input", () => {
 });
 
 setActivityFromRoute();
+getClientIpAddress();
