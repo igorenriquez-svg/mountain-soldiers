@@ -435,7 +435,7 @@ function buildReservationUrl(departure) {
     price_1_4: String(departure.price_1_4 || ""),
   });
 
-  return `index.html?${params.toString()}`;
+  return `reserva.html?${params.toString()}`;
 }
 
 function renderShowcaseCard(departure) {
