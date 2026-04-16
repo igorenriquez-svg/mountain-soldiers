@@ -355,7 +355,11 @@ function buildCustomerActivityHistory({
   return JSON.stringify(history);
 }
 
-function getActivityImage(activityType) {
+function getActivityImage(activityType, routeSlug, imageUrl) {
+  if (imageUrl && String(imageUrl).trim()) {
+    return String(imageUrl).trim();
+  }
+
   return ACTIVITY_IMAGES[activityType] || ACTIVITY_IMAGES.default;
 }
 
@@ -441,7 +445,11 @@ function buildReservationUrl(departure) {
 function renderShowcaseCard(departure) {
   const card = document.createElement("article");
   card.className = "showcase-card";
-  card.style.backgroundImage = `url("${getActivityImage(departure.activity_type)}")`;
+  card.style.backgroundImage = `url("${getActivityImage(
+  departure.activity_type,
+  departure.route_slug,
+  departure.image_url
+)}")`;
 
   const priceText = formatPrice(departure.price_1_4, "EUR");
   const activityLabel = formatActivityLabel(departure.activity_type);
