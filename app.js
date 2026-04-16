@@ -1,5 +1,5 @@
-const API_URL_ROUTES_CATALOG =
-  "https://primary-production-beb9e.up.railway.app/webhook/ms-routes-catalog";
+const API_URL_JOINABLE_DEPARTURES =
+  "https://primary-production-beb9e.up.railway.app/webhook/ms-joinable-departures";
 
 const API_URL_CHECK_AVAILABILITY =
   "https://primary-production-beb9e.up.railway.app/webhook/ms-check-availability";
@@ -19,8 +19,6 @@ let checkoutData = null;
 let clientIpAddress = "";
 
 const form = document.getElementById("booking-form");
-const routeSelect = document.getElementById("route_slug");
-const activityInput = document.getElementById("activity_type");
 const resultBox = document.getElementById("result-box");
 const debugBox = document.getElementById("debug-box");
 const checkBtn = document.getElementById("check-btn");
@@ -32,10 +30,37 @@ const phoneHiddenInput = document.getElementById("customer_phone");
 const privacyConsentInput = document.getElementById("privacy_consent");
 const marketingConsentInput = document.getElementById("marketing_consent");
 
+const selectedDepartureCard = document.getElementById("selected-departure-card");
+const departureIdInput = document.getElementById("departure_id");
+const routeSlugInput = document.getElementById("route_slug");
+const activityTypeValueInput = document.getElementById("activity_type_value");
+const dateValueInput = document.getElementById("date_value");
+const startTimeValueInput = document.getElementById("start_time_value");
+const routeNameValueInput = document.getElementById("route_name_value");
+
+const activityInput = document.getElementById("activity_type");
+const dateDisplayInput = document.getElementById("date_display");
+const startTimeDisplayInput = document.getElementById("start_time_display");
+
+const showcaseGrid = document.getElementById("showcase-grid");
+const showcaseLoading = document.getElementById("showcase-loading");
+const showcaseEmpty = document.getElementById("showcase-empty");
+
 const ACTIVITY_LABELS = {
   via_ferrata: "Vía ferrata",
   barranquismo: "Barranquismo",
   raquetas_nieve: "Raquetas de nieve",
+};
+
+const ACTIVITY_IMAGES = {
+  via_ferrata:
+    "https://images.unsplash.com/photo-1527631746610-bca00a040d60?auto=format&fit=crop&w=1400&q=80",
+  barranquismo:
+    "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+  raquetas_nieve:
+    "https://images.unsplash.com/photo-1517821099601-1a7f0d0e6833?auto=format&fit=crop&w=1400&q=80",
+  default:
+    "https://images.unsplash.com/photo-1501555088652-021faa106b9b?auto=format&fit=crop&w=1400&q=80",
 };
 
 function escapeHtml(value) {
@@ -61,7 +86,7 @@ function formatApiDate(dateString) {
 
 function formatPrice(amount, currency = "EUR") {
   if (amount === null || typeof amount === "undefined" || amount === "") {
-    return "No disponible";
+    return "Precio a consultar";
   }
 
   const number = Number(amount);
@@ -81,30 +106,20 @@ function formatPrice(amount, currency = "EUR") {
   }
 }
 
-function getSelectedRouteName() {
-  const selectedOption = routeSelect.options[routeSelect.selectedIndex];
-  return selectedOption?.textContent?.trim() || "";
-}
-
-function setActivityFromRoute() {
-  const selectedOption = routeSelect.options[routeSelect.selectedIndex];
-  const activityType = selectedOption?.dataset?.activity || "";
-  activityInput.value = formatActivityLabel(activityType);
-  activityInput.dataset.rawValue = activityType;
-}
-
 function renderDebug(title, payload) {
   if (!debugBox) return;
   debugBox.textContent = `${title}\n\n${JSON.stringify(payload, null, 2)}`;
 }
 
 function renderError(message, data = null) {
+  if (!resultBox) return;
+
   resultBox.className = "result-box error";
   resultBox.innerHTML = `
     <div class="result-pill result-pill-error">No disponible</div>
     <h3 class="result-title">No hemos podido continuar con tu reserva</h3>
     <p class="result-copy">${escapeHtml(message)}</p>
-    <p class="helper-text">Prueba con otra fecha o vuelve a intentarlo en unos segundos.</p>
+    <p class="helper-text">Prueba de nuevo o vuelve al escaparate de salidas.</p>
   `;
 
   if (data) {
@@ -137,8 +152,8 @@ async function safeJson(response, endpointName) {
   }
 }
 
-async function getRoutesCatalog() {
-  const response = await fetch(API_URL_ROUTES_CATALOG, {
+async function getJoinableDepartures() {
+  const response = await fetch(API_URL_JOINABLE_DEPARTURES, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -146,119 +161,23 @@ async function getRoutesCatalog() {
     cache: "no-store",
   });
 
-  const data = await safeJson(response, "catálogo de rutas");
+  const data = await safeJson(response, "salidas disponibles");
 
   if (!response.ok) {
     throw new Error(data?.message || `HTTP ${response.status}`);
   }
 
-  const routesArray = Array.isArray(data)
+  const departuresArray = Array.isArray(data)
     ? data
-    : Array.isArray(data?.routes)
-      ? data.routes
+    : Array.isArray(data?.departures)
+      ? data.departures
       : [];
 
-  if (!Array.isArray(routesArray)) {
-    throw new Error("El catálogo de rutas no tiene un formato válido.");
+  if (!Array.isArray(departuresArray)) {
+    throw new Error("El endpoint de salidas disponibles no tiene un formato válido.");
   }
 
-  return routesArray;
-}
-
-function groupLabelFromActivity(activityType) {
-  const labels = {
-    via_ferrata: "Vías ferratas",
-    barranquismo: "Barranquismo",
-    raquetas_nieve: "Raquetas de nieve",
-  };
-
-  return labels[activityType] || activityType || "Otras actividades";
-}
-
-function normalizeRouteItem(route) {
-  return {
-    route_slug: String(route?.route_slug || "").trim(),
-    activity_type: String(route?.activity_type || "").trim(),
-    route_name: String(route?.route_name || route?.name || route?.title || "").trim(),
-    active: String(route?.active ?? "true").trim(),
-  };
-}
-
-function routeIsActive(route) {
-  const normalized = String(route?.active ?? "true").trim().toLowerCase();
-  return ["true", "1", "yes", "si", "sí", ""].includes(normalized);
-}
-
-function renderRoutesSelect(routes) {
-  routeSelect.innerHTML = "";
-
-  const defaultOption = document.createElement("option");
-  defaultOption.value = "";
-  defaultOption.textContent = "Selecciona una ruta";
-  routeSelect.appendChild(defaultOption);
-
-  const normalizedRoutes = routes
-    .map(normalizeRouteItem)
-    .filter((route) => route.route_slug && route.activity_type && route.route_name)
-    .filter(routeIsActive);
-
-  const grouped = {};
-
-  normalizedRoutes.forEach((route) => {
-    const groupName = groupLabelFromActivity(route.activity_type);
-
-    if (!grouped[groupName]) {
-      grouped[groupName] = [];
-    }
-
-    grouped[groupName].push(route);
-  });
-
-  Object.entries(grouped).forEach(([groupName, groupRoutes]) => {
-    const optgroup = document.createElement("optgroup");
-    optgroup.label = groupName;
-
-    groupRoutes
-      .sort((a, b) => a.route_name.localeCompare(b.route_name, "es"))
-      .forEach((route) => {
-        const option = document.createElement("option");
-        option.value = route.route_slug;
-        option.dataset.activity = route.activity_type;
-        option.textContent = route.route_name;
-        optgroup.appendChild(option);
-      });
-
-    routeSelect.appendChild(optgroup);
-  });
-
-  routeSelect.disabled = false;
-  setActivityFromRoute();
-}
-
-async function initRoutesCatalog() {
-  try {
-    routeSelect.disabled = true;
-    routeSelect.innerHTML = `<option value="">Cargando aventuras...</option>`;
-
-    const routes = await getRoutesCatalog();
-
-    if (!routes.length) {
-      routeSelect.innerHTML = `<option value="">No hay rutas disponibles</option>`;
-      routeSelect.disabled = true;
-      activityInput.value = "";
-      activityInput.dataset.rawValue = "";
-      return;
-    }
-
-    renderRoutesSelect(routes);
-  } catch (error) {
-    routeSelect.innerHTML = `<option value="">No se pudieron cargar las rutas</option>`;
-    routeSelect.disabled = true;
-    activityInput.value = "";
-    activityInput.dataset.rawValue = "";
-    renderError(`No se ha podido cargar el catálogo de rutas. ${error.message}`);
-    console.error("ROUTES CATALOG ERROR:", error);
-  }
+  return departuresArray;
 }
 
 async function checkAvailability(payload) {
@@ -387,7 +306,7 @@ function validateFormBeforeSubmit({
   language,
 }) {
   if (!route_slug || !activity_type || !date || !pax) {
-    throw new Error("Faltan campos obligatorios.");
+    throw new Error("Faltan datos de la salida seleccionada.");
   }
 
   if (!customer_name) {
@@ -436,6 +355,275 @@ function buildCustomerActivityHistory({
   return JSON.stringify(history);
 }
 
+function getActivityImage(activityType) {
+  return ACTIVITY_IMAGES[activityType] || ACTIVITY_IMAGES.default;
+}
+
+function getCommercialCopy(activityType, difficulty = "") {
+  const normalizedDifficulty = String(difficulty || "").trim().toLowerCase();
+
+  if (activityType === "via_ferrata") {
+    if (normalizedDifficulty.includes("alta") || normalizedDifficulty.includes("dificil")) {
+      return "Vertical, intensa y con vistas brutales. Una salida pensada para quienes quieren montaña con carácter.";
+    }
+    return "Roca, altura y una progresión espectacular. Ideal para vivir una aventura potente con sensación de logro real.";
+  }
+
+  if (activityType === "barranquismo") {
+    if (normalizedDifficulty.includes("alta") || normalizedDifficulty.includes("dificil")) {
+      return "Agua, roca y adrenalina de verdad. Una experiencia salvaje para quienes buscan una aventura más intensa.";
+    }
+    return "Saltos, agua y montaña en estado puro. Perfecta para disfrutar una aventura divertida, dinámica y memorable.";
+  }
+
+  if (activityType === "raquetas_nieve") {
+    return "Paisaje invernal, aire puro y una experiencia distinta en la montaña. Ideal para descubrir el entorno con calma y épica.";
+  }
+
+  return "Una aventura guiada en un entorno espectacular, pensada para disfrutar la montaña con seguridad y emoción.";
+}
+
+function getCommercialBadge(departure) {
+  const activityType = String(departure.activity_type || "").trim();
+  const difficulty = String(departure.difficulty || "").trim().toLowerCase();
+  const paxConfirmed = Number(departure.pax_confirmed || 0);
+
+  if (paxConfirmed >= 5) {
+    return "Más vendida";
+  }
+
+  if (difficulty.includes("alta") || difficulty.includes("dificil")) {
+    return "Nivel alto";
+  }
+
+  if (difficulty.includes("baja") || difficulty.includes("fácil") || difficulty.includes("facil")) {
+    return "Ideal para iniciarse";
+  }
+
+  if (activityType === "raquetas_nieve") {
+    return "Experiencia única";
+  }
+
+  return "Plazas muy limitadas";
+}
+
+function getStatusBadgeText(departure) {
+  const paxConfirmed = Number(departure.pax_confirmed || 0);
+
+  if (paxConfirmed >= 5) {
+    return "Grupo en marcha";
+  }
+
+  if (paxConfirmed >= 2) {
+    return "Salida activa";
+  }
+
+  return "Salida abierta";
+}
+
+function buildReservationUrl(departure) {
+  const params = new URLSearchParams({
+    departure_id: String(departure.departure_id || ""),
+    route_slug: String(departure.route_slug || ""),
+    route_name: String(departure.route_name || ""),
+    activity_type: String(departure.activity_type || ""),
+    date: String(departure.date || ""),
+    start_time: String(departure.start_time || ""),
+    guide_name: String(departure.guide_name || ""),
+    location: String(departure.location || ""),
+    difficulty: String(departure.difficulty || ""),
+    price_1_4: String(departure.price_1_4 || ""),
+  });
+
+  return `index.html?${params.toString()}`;
+}
+
+function renderShowcaseCard(departure) {
+  const card = document.createElement("article");
+  card.className = "showcase-card";
+  card.style.backgroundImage = `url("${getActivityImage(departure.activity_type)}")`;
+
+  const priceText = formatPrice(departure.price_1_4, "EUR");
+  const activityLabel = formatActivityLabel(departure.activity_type);
+  const commercialCopy = getCommercialCopy(departure.activity_type, departure.difficulty);
+  const commercialBadge = getCommercialBadge(departure);
+  const statusBadge = getStatusBadgeText(departure);
+
+  card.innerHTML = `
+    <div class="showcase-card-inner">
+      <div class="showcase-topbar">
+        <span class="departure-badge">${escapeHtml(activityLabel)}</span>
+        <span class="departure-badge-secondary">${escapeHtml(commercialBadge)}</span>
+        <span class="departure-status">${escapeHtml(statusBadge)}</span>
+      </div>
+
+      <div class="showcase-copy-block">
+        <h3 class="departure-title">${escapeHtml(departure.route_name || "Salida disponible")}</h3>
+        <p class="departure-copy">${escapeHtml(commercialCopy)}</p>
+      </div>
+
+      <div class="showcase-meta">
+        <span class="showcase-meta-tag">${escapeHtml(formatApiDate(departure.date))}</span>
+        <span class="showcase-meta-tag">${escapeHtml(departure.start_time || "10:00")}</span>
+        <span class="showcase-meta-tag">Plazas limitadas</span>
+      </div>
+
+      <div class="showcase-facts">
+        <div class="showcase-fact">
+          <span class="showcase-fact-label">Ubicación</span>
+          <span class="showcase-fact-value">${escapeHtml(departure.location || "A consultar")}</span>
+        </div>
+        <div class="showcase-fact">
+          <span class="showcase-fact-label">Dificultad</span>
+          <span class="showcase-fact-value">${escapeHtml(departure.difficulty || "A consultar")}</span>
+        </div>
+        <div class="showcase-fact">
+          <span class="showcase-fact-label">Guía</span>
+          <span class="showcase-fact-value">${escapeHtml(departure.guide_name || "Equipo Mountain Soldiers")}</span>
+        </div>
+        <div class="showcase-fact">
+          <span class="showcase-fact-label">Precio desde</span>
+          <span class="showcase-fact-value">${escapeHtml(priceText)}</span>
+        </div>
+      </div>
+
+      <div class="departure-actions">
+        <a href="${buildReservationUrl(departure)}" class="departure-button">Unirme a esta salida</a>
+      </div>
+    </div>
+  `;
+
+  return card;
+}
+
+async function initShowcasePage() {
+  if (!showcaseGrid) return;
+
+  try {
+    const departures = await getJoinableDepartures();
+
+    if (showcaseLoading) {
+      showcaseLoading.classList.add("is-hidden");
+    }
+
+    if (!departures.length) {
+      showcaseEmpty?.classList.remove("is-hidden");
+      return;
+    }
+
+    showcaseGrid.innerHTML = "";
+    departures.forEach((departure) => {
+      showcaseGrid.appendChild(renderShowcaseCard(departure));
+    });
+
+    showcaseGrid.classList.remove("is-hidden");
+  } catch (error) {
+    console.error("SHOWCASE ERROR:", error);
+
+    if (showcaseLoading) {
+      showcaseLoading.classList.add("is-hidden");
+    }
+
+    if (showcaseEmpty) {
+      showcaseEmpty.classList.remove("is-hidden");
+      showcaseEmpty.innerHTML = `
+        <div class="result-pill result-pill-error">Error</div>
+        <h3 class="result-title">No hemos podido cargar las salidas disponibles</h3>
+        <p class="result-copy">${escapeHtml(error.message)}</p>
+        <div class="result-actions">
+          <a href="salidas.html" class="link-button">Reintentar</a>
+        </div>
+      `;
+    }
+  }
+}
+
+function getDepartureParams() {
+  const params = new URLSearchParams(window.location.search);
+
+  return {
+    departure_id: params.get("departure_id") || "",
+    route_slug: params.get("route_slug") || "",
+    route_name: params.get("route_name") || "",
+    activity_type: params.get("activity_type") || "",
+    date: params.get("date") || "",
+    start_time: params.get("start_time") || "",
+    guide_name: params.get("guide_name") || "",
+    location: params.get("location") || "",
+    difficulty: params.get("difficulty") || "",
+    price_1_4: params.get("price_1_4") || "",
+  };
+}
+
+function applyDepartureToReservationPage(departure) {
+  if (!selectedDepartureCard) return;
+
+  const hasSelection =
+    departure.route_slug && departure.activity_type && departure.date;
+
+  if (!hasSelection) {
+    if (checkBtn) checkBtn.disabled = true;
+    return;
+  }
+
+  departureIdInput.value = departure.departure_id || "";
+  routeSlugInput.value = departure.route_slug || "";
+  routeNameValueInput.value = departure.route_name || "";
+  activityTypeValueInput.value = departure.activity_type || "";
+  dateValueInput.value = departure.date || "";
+  startTimeValueInput.value = departure.start_time || "";
+
+  activityInput.value = formatActivityLabel(departure.activity_type);
+  dateDisplayInput.value = formatApiDate(departure.date);
+  startTimeDisplayInput.value = departure.start_time || "-";
+
+  const priceText = formatPrice(departure.price_1_4, "EUR");
+
+  selectedDepartureCard.innerHTML = `
+    <div class="showcase-topbar">
+      <span class="departure-badge">${escapeHtml(formatActivityLabel(departure.activity_type))}</span>
+      <span class="departure-badge-secondary">${escapeHtml(getCommercialBadge(departure))}</span>
+      <span class="departure-status">${escapeHtml(getStatusBadgeText(departure))}</span>
+    </div>
+
+    <h3 class="result-title">${escapeHtml(departure.route_name || "Salida seleccionada")}</h3>
+    <p class="result-copy">
+      ${escapeHtml(getCommercialCopy(departure.activity_type, departure.difficulty))}
+    </p>
+
+    <div class="selected-summary-grid">
+      <div class="selected-summary-item">
+        <span class="selected-summary-label">Fecha</span>
+        <span class="selected-summary-value">${escapeHtml(formatApiDate(departure.date))}</span>
+      </div>
+      <div class="selected-summary-item">
+        <span class="selected-summary-label">Hora</span>
+        <span class="selected-summary-value">${escapeHtml(departure.start_time || "10:00")}</span>
+      </div>
+      <div class="selected-summary-item">
+        <span class="selected-summary-label">Ubicación</span>
+        <span class="selected-summary-value">${escapeHtml(departure.location || "A consultar")}</span>
+      </div>
+      <div class="selected-summary-item">
+        <span class="selected-summary-label">Dificultad</span>
+        <span class="selected-summary-value">${escapeHtml(departure.difficulty || "A consultar")}</span>
+      </div>
+      <div class="selected-summary-item">
+        <span class="selected-summary-label">Guía</span>
+        <span class="selected-summary-value">${escapeHtml(departure.guide_name || "Equipo Mountain Soldiers")}</span>
+      </div>
+      <div class="selected-summary-item">
+        <span class="selected-summary-label">Precio desde</span>
+        <span class="selected-summary-value">${escapeHtml(priceText)}</span>
+      </div>
+    </div>
+  `;
+
+  if (checkBtn) {
+    checkBtn.disabled = false;
+  }
+}
+
 function renderAvailabilityResult(data) {
   const status = String(data?.status || "").trim();
 
@@ -448,9 +636,9 @@ function renderAvailabilityResult(data) {
     resultBox.className = "result-box error";
     resultBox.innerHTML = `
       <div class="result-pill result-pill-error">Sin plazas</div>
-      <h3 class="result-title">Ahora mismo no tenemos disponibilidad</h3>
+      <h3 class="result-title">Ahora mismo no podemos confirmar esta salida</h3>
       <p class="result-copy">${escapeHtml(data.message || "La solicitud no es válida o no hay disponibilidad.")}</p>
-      <p class="helper-text">Prueba con otra fecha o con otra aventura.</p>
+      <p class="helper-text">Prueba con otra salida desde el escaparate.</p>
     `;
     renderDebug("CHECK AVAILABILITY RESPONSE", data);
     resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -459,7 +647,7 @@ function renderAvailabilityResult(data) {
 
   let boxClass = "result-box success";
   let pill = "Plazas disponibles";
-  let title = "Tu aventura está disponible";
+  let title = "Tu salida está disponible";
   let ctaText = "Bloquear mi plaza ahora";
 
   if (status === "manual_review") {
@@ -474,7 +662,7 @@ function renderAvailabilityResult(data) {
     pricePreview.currency || "EUR"
   );
 
-  const routeName = getSelectedRouteName() || data.route_name || data.route_slug || "-";
+  const routeName = routeNameValueInput?.value || data.route_name || data.route_slug || "-";
   const guideName = data.guide_name || "Equipo Mountain Soldiers";
 
   let actionButton = "";
@@ -493,7 +681,7 @@ function renderAvailabilityResult(data) {
   if (status === "manual_review") {
     actionButton = `
       <p class="helper-text">
-        Tu solicitud requiere validación manual. Si la enviáis, el equipo os contactará para cerrar todos los detalles.
+        Tu solicitud requiere validación manual. El equipo revisará la operativa antes de confirmar.
       </p>
     `;
   }
@@ -504,14 +692,14 @@ function renderAvailabilityResult(data) {
     <h3 class="result-title">${escapeHtml(title)}</h3>
     <p class="result-copy">
       ${status === "manual_review"
-        ? "Hemos recibido los datos de vuestra aventura. Antes de confirmar, el equipo revisará la operativa para ofreceros la mejor opción."
+        ? "Hemos recibido tus datos. Antes de confirmar, el equipo revisará la salida para ofrecerte la mejor opción."
         : "Ya puedes continuar con la reserva y asegurar tu salida antes de que se agoten las plazas."}
     </p>
 
     <ul class="result-list">
       <li><strong>Aventura:</strong> ${escapeHtml(routeName)}</li>
-      <li><strong>Fecha:</strong> ${escapeHtml(formatApiDate(data.date || "-"))}</li>
-      <li><strong>Hora de salida:</strong> ${escapeHtml(data.start_time || "-")}</li>
+      <li><strong>Fecha:</strong> ${escapeHtml(formatApiDate(data.date || dateValueInput?.value || "-"))}</li>
+      <li><strong>Hora de salida:</strong> ${escapeHtml(data.start_time || startTimeValueInput?.value || "-")}</li>
       <li><strong>Guía asignado:</strong> ${escapeHtml(guideName)}</li>
       <li><strong>Precio total:</strong> ${escapeHtml(totalPrice)}</li>
     </ul>
@@ -593,10 +781,11 @@ function attachHoldButtonHandler() {
       const userAgent = navigator.userAgent || "";
 
       const payload = {
+        departure_id: departureIdInput?.value || "",
         status: availabilityData.status,
-        route_slug: availabilityData.route_slug,
-        date: availabilityData.date,
-        start_time: availabilityData.start_time,
+        route_slug: availabilityData.route_slug || routeSlugInput?.value || "",
+        date: availabilityData.date || dateValueInput?.value || "",
+        start_time: availabilityData.start_time || startTimeValueInput?.value || "",
         pax: Number(document.getElementById("pax").value),
         customer_name: document.getElementById("customer_name").value.trim(),
         customer_phone,
@@ -613,9 +802,9 @@ function attachHoldButtonHandler() {
         ip_address: ipAddress,
         user_agent: userAgent,
         customer_activity_history: buildCustomerActivityHistory({
-          routeSlug: availabilityData.route_slug,
-          activityType: activityInput.dataset.rawValue?.trim() || "",
-          bookingDate: availabilityData.date,
+          routeSlug: availabilityData.route_slug || routeSlugInput?.value || "",
+          activityType: activityTypeValueInput?.value || "",
+          bookingDate: availabilityData.date || dateValueInput?.value || "",
           amountTotal: 0,
           eventType: "hold_created",
         }),
@@ -718,114 +907,128 @@ function attachCheckoutButtonHandler() {
   });
 }
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
+if (form) {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-  availabilityData = null;
-  holdData = null;
-  checkoutData = null;
+    availabilityData = null;
+    holdData = null;
+    checkoutData = null;
 
-  setActivityFromRoute();
+    try {
+      const route_slug = routeSlugInput?.value?.trim() || "";
+      const activity_type = activityTypeValueInput?.value?.trim() || "";
+      const date = dateValueInput?.value || "";
+      const start_time = startTimeValueInput?.value || "";
+      const pax = Number(document.getElementById("pax").value);
+      const customer_name = document.getElementById("customer_name").value.trim();
+      const customer_phone = getNormalizedPhoneNumber();
+      const customer_email = document.getElementById("customer_email").value.trim();
+      const language = document.getElementById("language").value;
 
-  try {
-    const route_slug = routeSelect.value.trim();
-    const activity_type = activityInput.dataset.rawValue?.trim() || "";
-    const date = document.getElementById("date").value;
-    const pax = Number(document.getElementById("pax").value);
-    const customer_name = document.getElementById("customer_name").value.trim();
-    const customer_phone = getNormalizedPhoneNumber();
-    const customer_email = document.getElementById("customer_email").value.trim();
-    const language = document.getElementById("language").value;
-
-    validateFormBeforeSubmit({
-      route_slug,
-      activity_type,
-      date,
-      pax,
-      customer_name,
-      customer_phone,
-      customer_email,
-      language,
-    });
-
-    const payload = {
-      activity_type,
-      route_slug,
-      date,
-      pax,
-      group_type: "shared",
-      language,
-      source: "web",
-    };
-
-    checkBtn.disabled = true;
-    checkBtn.textContent = "Consultando plazas...";
-
-    resultBox.className = "result-box empty";
-    resultBox.innerHTML = `
-      <div class="result-pill">Comprobando</div>
-      <h3 class="result-title">Estamos buscando disponibilidad</h3>
-      <p class="result-copy">Un momento, estamos preparando tu aventura…</p>
-    `;
-
-    renderDebug("CHECK AVAILABILITY REQUEST", {
-      endpoint: API_URL_CHECK_AVAILABILITY,
-      payload,
-      customer_preview: {
+      validateFormBeforeSubmit({
+        route_slug,
+        activity_type,
+        date,
+        pax,
         customer_name,
         customer_phone,
         customer_email,
-      },
-      legal: {
-        gdpr_consent: privacyConsentInput?.checked ? "true" : "false",
-        marketing_consent: marketingConsentInput?.checked ? "true" : "false",
-        consent_text_version: CONSENT_TEXT_VERSION,
-      },
-    });
+        language,
+      });
 
-    const data = await checkAvailability(payload);
+      const payload = {
+        departure_id: departureIdInput?.value || "",
+        activity_type,
+        route_slug,
+        date,
+        start_time,
+        pax,
+        group_type: "shared",
+        language,
+        source: "web",
+      };
 
-    availabilityData = data;
-    renderAvailabilityResult(data);
-  } catch (error) {
-    renderError(error.message);
-    console.error("CHECK AVAILABILITY ERROR:", error);
-  } finally {
-    checkBtn.disabled = false;
-    checkBtn.textContent = "Ver disponibilidad y reservar";
-  }
-});
+      checkBtn.disabled = true;
+      checkBtn.textContent = "Consultando plazas...";
 
-routeSelect.addEventListener("change", setActivityFromRoute);
+      resultBox.className = "result-box empty";
+      resultBox.innerHTML = `
+        <div class="result-pill">Comprobando</div>
+        <h3 class="result-title">Estamos revisando la salida seleccionada</h3>
+        <p class="result-copy">Un momento, estamos comprobando la disponibilidad real de tu aventura…</p>
+      `;
 
-phoneCountrySelect.addEventListener("change", () => {
-  try {
-    if (phoneLocalInput.value.trim()) {
-      getNormalizedPhoneNumber();
-    } else {
+      renderDebug("CHECK AVAILABILITY REQUEST", {
+        endpoint: API_URL_CHECK_AVAILABILITY,
+        payload,
+        customer_preview: {
+          customer_name,
+          customer_phone,
+          customer_email,
+        },
+        legal: {
+          gdpr_consent: privacyConsentInput?.checked ? "true" : "false",
+          marketing_consent: marketingConsentInput?.checked ? "true" : "false",
+          consent_text_version: CONSENT_TEXT_VERSION,
+        },
+      });
+
+      const data = await checkAvailability(payload);
+
+      availabilityData = data;
+      renderAvailabilityResult(data);
+    } catch (error) {
+      renderError(error.message);
+      console.error("CHECK AVAILABILITY ERROR:", error);
+    } finally {
+      checkBtn.disabled = !routeSlugInput?.value;
+      checkBtn.textContent = "Ver disponibilidad y reservar";
+    }
+  });
+}
+
+if (phoneCountrySelect) {
+  phoneCountrySelect.addEventListener("change", () => {
+    try {
+      if (phoneLocalInput.value.trim()) {
+        getNormalizedPhoneNumber();
+      } else {
+        phoneHiddenInput.value = "";
+      }
+    } catch {
       phoneHiddenInput.value = "";
     }
-  } catch {
-    phoneHiddenInput.value = "";
-  }
-});
+  });
+}
 
-phoneLocalInput.addEventListener("input", () => {
-  try {
-    const cleaned = phoneLocalInput.value.replace(/[^\d\s()-]/g, "");
-    if (cleaned !== phoneLocalInput.value) {
-      phoneLocalInput.value = cleaned;
-    }
+if (phoneLocalInput) {
+  phoneLocalInput.addEventListener("input", () => {
+    try {
+      const cleaned = phoneLocalInput.value.replace(/[^\d\s()-]/g, "");
+      if (cleaned !== phoneLocalInput.value) {
+        phoneLocalInput.value = cleaned;
+      }
 
-    if (phoneLocalInput.value.trim()) {
-      getNormalizedPhoneNumber();
-    } else {
+      if (phoneLocalInput.value.trim()) {
+        getNormalizedPhoneNumber();
+      } else {
+        phoneHiddenInput.value = "";
+      }
+    } catch {
       phoneHiddenInput.value = "";
     }
-  } catch {
-    phoneHiddenInput.value = "";
-  }
-});
+  });
+}
 
-initRoutesCatalog();
-getClientIpAddress();
+document.addEventListener("DOMContentLoaded", () => {
+  if (showcaseGrid) {
+    initShowcasePage();
+  }
+
+  if (selectedDepartureCard) {
+    applyDepartureToReservationPage(getDepartureParams());
+  }
+
+  getClientIpAddress();
+});
