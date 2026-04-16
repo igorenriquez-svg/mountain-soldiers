@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Próximas salidas | Mountain Soldiers</title>
+  <meta
+    name="description"
+    content="Descubre las próximas salidas disponibles de Mountain Soldiers y únete a una aventura ya abierta."
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero-section hero-showcase">
+      <div class="hero-overlay"></div>
+
+      <div class="container hero-showcase-inner">
+        <div class="hero-copy hero-copy-wide">
+          <p class="eyebrow">Mountain Soldiers</p>
+          <h1>Próximas aventuras disponibles</h1>
+          <p class="subtitle">
+            Únete a una salida ya abierta y vive una experiencia real en la montaña.
+            Barrancos, vías ferratas y aventuras guiadas con plazas limitadas.
+          </p>
+
+          <div class="hero-points">
+            <div class="hero-point">
+              <span class="hero-point-icon">✓</span>
+              <span>Salidas reales abiertas</span>
+            </div>
+            <div class="hero-point">
+              <span class="hero-point-icon">✓</span>
+              <span>Reserva rápida y segura</span>
+            </div>
+            <div class="hero-point">
+              <span class="hero-point-icon">✓</span>
+              <span>Experiencias guiadas de verdad</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section showcase-section">
+      <div class="container">
+        <div class="section-head showcase-head">
+          <div>
+            <p class="section-kicker">Escaparate premium</p>
+            <h2>Elige tu próxima salida</h2>
+          </div>
+          <a class="ghost-link" href="index.html">Ir directamente a la reserva</a>
+        </div>
+
+        <div id="showcase-loading" class="card showcase-loading-card">
+          <div class="result-pill">Cargando</div>
+          <h3 class="result-title">Estamos preparando las próximas salidas</h3>
+          <p class="result-copy">
+            Un momento, estamos cargando las aventuras disponibles a las que ya te puedes unir.
+          </p>
+        </div>
+
+        <div id="showcase-empty" class="card showcase-empty-card is-hidden">
+          <div class="result-pill result-pill-warning">Sin salidas abiertas</div>
+          <h3 class="result-title">Ahora mismo no hay salidas publicadas</h3>
+          <p class="result-copy">
+            Estamos preparando nuevas aventuras. Vuelve a revisar más tarde o ponte en contacto con el equipo.
+          </p>
+          <div class="result-actions">
+            <a href="index.html" class="link-button">Ir a la reserva</a>
+          </div>
+        </div>
+
+        <div id="showcase-grid" class="showcase-grid is-hidden"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js?v=30"></script>
+</body>
+</html>
