@@ -3,75 +3,82 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reserva tu aventura | Mountain Soldiers</title>
+  <title>Reserva tu plaza | Mountain Soldiers</title>
   <meta
     name="description"
-    content="Reserva tu aventura con Mountain Soldiers. Comprueba disponibilidad, bloquea tu plaza y confirma tu salida online."
+    content="Completa tu reserva en Mountain Soldiers y asegura tu plaza en una salida ya abierta."
   />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="page-shell">
-    <section class="hero-section">
+    <section class="hero-section hero-reserve">
       <div class="hero-overlay"></div>
 
-      <div class="container hero-grid">
+      <div class="container hero-grid reserve-grid">
         <div class="hero-copy">
           <p class="eyebrow">Mountain Soldiers</p>
-          <h1>Reserva tu próxima aventura</h1>
+          <h1>Completa tu reserva</h1>
           <p class="subtitle">
-            Barrancos, vías ferratas y experiencias brutales en la montaña.
-            Comprueba disponibilidad y bloquea tu plaza en pocos pasos.
+            Has elegido una salida concreta. Rellena tus datos, bloquea tu plaza y confirma tu aventura.
           </p>
 
           <div class="hero-points">
             <div class="hero-point">
               <span class="hero-point-icon">✓</span>
-              <span>Reserva rápida y clara</span>
+              <span>Reserva guiada y clara</span>
             </div>
             <div class="hero-point">
               <span class="hero-point-icon">✓</span>
-              <span>Confirmación segura</span>
+              <span>Pago seguro</span>
             </div>
             <div class="hero-point">
               <span class="hero-point-icon">✓</span>
-              <span>Experiencias guiadas de verdad</span>
+              <span>Confirmación inmediata</span>
             </div>
           </div>
         </div>
 
         <div class="booking-panel">
-          <div class="panel-badge">Plazas limitadas</div>
-          <h2>Bloquea tu plaza ahora</h2>
+          <div class="panel-badge">Salida seleccionada</div>
+          <h2>Tu próxima aventura</h2>
           <p class="panel-copy">
-            Elige tu aventura, revisa disponibilidad y da el primer paso para vivirla.
+            Revisa la salida elegida y completa tus datos para reservar tu plaza.
           </p>
 
-          <form id="booking-form" novalidate>
-            <div class="grid">
-              <div class="field field-full">
-                <label for="route_slug">Aventura</label>
-                <select id="route_slug" name="route_slug" required disabled>
-                  <option value="">Cargando aventuras...</option>
-                </select>
-                <p class="field-hint">
-                  Las rutas se cargan automáticamente desde el catálogo activo.
-                </p>
-              </div>
+          <div id="selected-departure-card" class="selected-departure-card">
+            <div class="result-pill">Pendiente</div>
+            <h3 class="result-title">No hay salida seleccionada</h3>
+            <p class="result-copy">
+              Vuelve al escaparate y elige una aventura disponible para continuar con la reserva.
+            </p>
+            <div class="result-actions">
+              <a href="salidas.html" class="link-button">Ver salidas disponibles</a>
+            </div>
+          </div>
 
+          <form id="booking-form" novalidate>
+            <input type="hidden" id="departure_id" name="departure_id" />
+            <input type="hidden" id="route_slug" name="route_slug" />
+            <input type="hidden" id="activity_type_value" name="activity_type_value" />
+            <input type="hidden" id="date_value" name="date_value" />
+            <input type="hidden" id="start_time_value" name="start_time_value" />
+            <input type="hidden" id="route_name_value" name="route_name_value" />
+
+            <div class="grid reserve-form-grid">
               <div class="field">
                 <label for="activity_type">Actividad</label>
                 <input id="activity_type" name="activity_type" type="text" readonly />
               </div>
 
               <div class="field">
-                <label for="date">Fecha</label>
-                <input id="date" name="date" type="date" required />
+                <label for="date_display">Fecha</label>
+                <input id="date_display" name="date_display" type="text" readonly />
               </div>
 
               <div class="field">
-                <label for="pax">Participantes</label>
-                <input id="pax" name="pax" type="number" min="1" step="1" value="2" required />
+                <label for="start_time_display">Hora de salida</label>
+                <input id="start_time_display" name="start_time_display" type="text" readonly />
               </div>
 
               <div class="field">
@@ -82,6 +89,11 @@
                   <option value="en">English</option>
                   <option value="fr">Français</option>
                 </select>
+              </div>
+
+              <div class="field">
+                <label for="pax">Participantes</label>
+                <input id="pax" name="pax" type="number" min="1" step="1" value="2" required />
               </div>
 
               <div class="field">
@@ -150,14 +162,18 @@
             </div>
 
             <div class="actions">
-              <button id="check-btn" type="submit" class="primary-button">
+              <button id="check-btn" type="submit" class="primary-button" disabled>
                 Ver disponibilidad y reservar
               </button>
             </div>
 
             <p class="microcopy">
-              Consultar disponibilidad no implica pago inmediato. Primero revisaremos si hay plazas para tu salida.
+              Primero comprobaremos la disponibilidad real de esta salida antes de bloquear tu plaza y llevarte al pago.
             </p>
+
+            <div class="inline-alt-link">
+              <a href="salidas.html">← Volver al escaparate de salidas</a>
+            </div>
           </form>
         </div>
       </div>
@@ -176,7 +192,7 @@
               <div class="result-pill">Pendiente</div>
               <h3 class="result-title">Todavía no has consultado disponibilidad</h3>
               <p class="result-copy">
-                Completa el formulario y te mostraremos si tu aventura está disponible para la fecha elegida.
+                Cuando revisemos la disponibilidad de esta salida, aquí verás el siguiente paso de tu reserva.
               </p>
             </div>
           </section>
@@ -184,20 +200,20 @@
 
         <aside class="side-column">
           <section class="card info-card">
-            <p class="section-kicker">Por qué reservar aquí</p>
-            <h2>Tu aventura empieza ahora</h2>
+            <p class="section-kicker">Antes de confirmar</p>
+            <h2>Cómo funciona</h2>
             <div class="info-list">
               <div class="info-item">
-                <strong>Proceso claro</strong>
-                <span>Consulta disponibilidad y avanza al pago sin fricción.</span>
+                <strong>1. Revisión</strong>
+                <span>Comprobamos la disponibilidad real de la salida seleccionada.</span>
               </div>
               <div class="info-item">
-                <strong>Plaza temporalmente bloqueada</strong>
-                <span>Cuando haya disponibilidad, podrás asegurar tu hueco antes de pagar.</span>
+                <strong>2. Bloqueo temporal</strong>
+                <span>Si hay plazas, bloqueamos tu sitio durante unos minutos.</span>
               </div>
               <div class="info-item">
-                <strong>Pago seguro</strong>
-                <span>La confirmación final se realiza a través de Stripe.</span>
+                <strong>3. Pago seguro</strong>
+                <span>Terminas la reserva en una pasarela de pago segura.</span>
               </div>
             </div>
           </section>
@@ -213,6 +229,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>
