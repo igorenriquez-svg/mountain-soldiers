@@ -1,3 +1,6 @@
+const API_URL_ROUTES_CATALOG =
+  "https://primary-production-beb9e.up.railway.app/webhook/ms-routes-catalog";
+
 const API_URL_CHECK_AVAILABILITY =
   "https://primary-production-beb9e.up.railway.app/webhook/ms-check-availability";
 
@@ -131,6 +134,130 @@ async function safeJson(response, endpointName) {
     return await response.json();
   } catch {
     throw new Error(`El endpoint de ${endpointName} no devolvió JSON válido.`);
+  }
+}
+
+async function getRoutesCatalog() {
+  const response = await fetch(API_URL_ROUTES_CATALOG, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const data = await safeJson(response, "catálogo de rutas");
+
+  if (!response.ok) {
+    throw new Error(data?.message || `HTTP ${response.status}`);
+  }
+
+  const routesArray = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.routes)
+      ? data.routes
+      : [];
+
+  if (!Array.isArray(routesArray)) {
+    throw new Error("El catálogo de rutas no tiene un formato válido.");
+  }
+
+  return routesArray;
+}
+
+function groupLabelFromActivity(activityType) {
+  const labels = {
+    via_ferrata: "Vías ferratas",
+    barranquismo: "Barranquismo",
+    raquetas_nieve: "Raquetas de nieve",
+  };
+
+  return labels[activityType] || activityType || "Otras actividades";
+}
+
+function normalizeRouteItem(route) {
+  return {
+    route_slug: String(route?.route_slug || "").trim(),
+    activity_type: String(route?.activity_type || "").trim(),
+    route_name: String(route?.route_name || route?.name || route?.title || "").trim(),
+    active: String(route?.active ?? "true").trim(),
+  };
+}
+
+function routeIsActive(route) {
+  const normalized = String(route?.active ?? "true").trim().toLowerCase();
+  return ["true", "1", "yes", "si", "sí", ""].includes(normalized);
+}
+
+function renderRoutesSelect(routes) {
+  routeSelect.innerHTML = "";
+
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "Selecciona una ruta";
+  routeSelect.appendChild(defaultOption);
+
+  const normalizedRoutes = routes
+    .map(normalizeRouteItem)
+    .filter((route) => route.route_slug && route.activity_type && route.route_name)
+    .filter(routeIsActive);
+
+  const grouped = {};
+
+  normalizedRoutes.forEach((route) => {
+    const groupName = groupLabelFromActivity(route.activity_type);
+
+    if (!grouped[groupName]) {
+      grouped[groupName] = [];
+    }
+
+    grouped[groupName].push(route);
+  });
+
+  Object.entries(grouped).forEach(([groupName, groupRoutes]) => {
+    const optgroup = document.createElement("optgroup");
+    optgroup.label = groupName;
+
+    groupRoutes
+      .sort((a, b) => a.route_name.localeCompare(b.route_name, "es"))
+      .forEach((route) => {
+        const option = document.createElement("option");
+        option.value = route.route_slug;
+        option.dataset.activity = route.activity_type;
+        option.textContent = route.route_name;
+        optgroup.appendChild(option);
+      });
+
+    routeSelect.appendChild(optgroup);
+  });
+
+  routeSelect.disabled = false;
+  setActivityFromRoute();
+}
+
+async function initRoutesCatalog() {
+  try {
+    routeSelect.disabled = true;
+    routeSelect.innerHTML = `<option value="">Cargando aventuras...</option>`;
+
+    const routes = await getRoutesCatalog();
+
+    if (!routes.length) {
+      routeSelect.innerHTML = `<option value="">No hay rutas disponibles</option>`;
+      routeSelect.disabled = true;
+      activityInput.value = "";
+      activityInput.dataset.rawValue = "";
+      return;
+    }
+
+    renderRoutesSelect(routes);
+  } catch (error) {
+    routeSelect.innerHTML = `<option value="">No se pudieron cargar las rutas</option>`;
+    routeSelect.disabled = true;
+    activityInput.value = "";
+    activityInput.dataset.rawValue = "";
+    renderError(`No se ha podido cargar el catálogo de rutas. ${error.message}`);
+    console.error("ROUTES CATALOG ERROR:", error);
   }
 }
 
@@ -514,16 +641,6 @@ function attachHoldButtonHandler() {
         throw new Error("La respuesta de create hold no incluye hold_id.");
       }
 
-      payload.customer_activity_history = buildCustomerActivityHistory({
-        reservationId: normalized.reservation_id,
-        departureId: normalized.departure_id,
-        routeSlug: availabilityData.route_slug,
-        activityType: activityInput.dataset.rawValue?.trim() || "",
-        bookingDate: availabilityData.date,
-        amountTotal: 0,
-        eventType: "hold_created",
-      });
-
       holdData = normalized;
       renderHoldResult(normalized);
       resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -710,5 +827,5 @@ phoneLocalInput.addEventListener("input", () => {
   }
 });
 
-setActivityFromRoute();
+initRoutesCatalog();
 getClientIpAddress();
