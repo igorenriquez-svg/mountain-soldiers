@@ -6,7 +6,7 @@
   <title>Reserva tu plaza | Mountain Soldiers</title>
   <meta
     name="description"
-    content="Completa tu reserva en Mountain Soldiers y asegura tu plaza en una salida ya abierta."
+    content="Completa tu reserva en Mountain Soldiers y asegura tu plaza en una salida ya abierta o programa tu propia aventura."
   />
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -20,7 +20,7 @@
           <p class="eyebrow">Mountain Soldiers</p>
           <h1>Completa tu reserva</h1>
           <p class="subtitle">
-            Has elegido una salida concreta. Rellena tus datos, bloquea tu plaza y confirma tu aventura.
+            Elige una salida abierta o programa tu propia aventura. Rellena tus datos, bloquea tu plaza y confirma tu experiencia.
           </p>
 
           <div class="hero-points">
@@ -40,20 +40,20 @@
         </div>
 
         <div class="booking-panel">
-          <div class="panel-badge">Salida seleccionada</div>
+          <div class="panel-badge">Reserva</div>
           <h2>Tu próxima aventura</h2>
           <p class="panel-copy">
-            Revisa la salida elegida y completa tus datos para reservar tu plaza.
+            Revisa la salida elegida o configura tu propia aventura y completa tus datos para reservar tu plaza.
           </p>
 
           <div id="selected-departure-card" class="selected-departure-card">
             <div class="result-pill">Pendiente</div>
             <h3 class="result-title">No hay salida seleccionada</h3>
             <p class="result-copy">
-              Vuelve al escaparate y elige una aventura disponible para continuar con la reserva.
+              Puedes volver al escaparate y elegir una aventura disponible o programar la tuya desde aquí.
             </p>
             <div class="result-actions">
-              <a href="salidas.html" class="link-button">Ver salidas disponibles</a>
+              <a href="index.html" class="link-button">Ver salidas disponibles</a>
             </div>
           </div>
 
@@ -66,17 +66,39 @@
             <input type="hidden" id="route_name_value" name="route_name_value" />
 
             <div class="grid reserve-form-grid">
-              <div class="field">
+              <div class="field" id="field-activity-readonly">
                 <label for="activity_type">Actividad</label>
                 <input id="activity_type" name="activity_type" type="text" readonly />
               </div>
 
-              <div class="field">
+              <div class="field field-full is-hidden" id="field-activity-manual">
+                <label for="manual_activity_type">Actividad</label>
+                <select id="manual_activity_type" name="manual_activity_type">
+                  <option value="">Selecciona una actividad</option>
+                  <option value="via_ferrata">Vía ferrata</option>
+                  <option value="barranquismo">Barranquismo</option>
+                  <option value="raquetas_nieve">Raquetas de nieve</option>
+                </select>
+              </div>
+
+              <div class="field field-full is-hidden" id="field-route-manual">
+                <label for="manual_route_slug">Ruta</label>
+                <select id="manual_route_slug" name="manual_route_slug">
+                  <option value="">Cargando rutas...</option>
+                </select>
+              </div>
+
+              <div class="field" id="field-date-readonly">
                 <label for="date_display">Fecha</label>
                 <input id="date_display" name="date_display" type="text" readonly />
               </div>
 
-              <div class="field">
+              <div class="field field-full is-hidden" id="field-date-manual">
+                <label for="manual_date">Fecha</label>
+                <input id="manual_date" name="manual_date" type="date" />
+              </div>
+
+              <div class="field" id="field-time-readonly">
                 <label for="start_time_display">Hora de salida</label>
                 <input id="start_time_display" name="start_time_display" type="text" readonly />
               </div>
@@ -168,11 +190,11 @@
             </div>
 
             <p class="microcopy">
-              Primero comprobaremos la disponibilidad real de esta salida antes de bloquear tu plaza y llevarte al pago.
+              Primero comprobaremos la disponibilidad real antes de bloquear tu plaza y llevarte al pago.
             </p>
 
             <div class="inline-alt-link">
-              <a href="salidas.html">← Volver al escaparate de salidas</a>
+              <a href="index.html">← Volver al escaparate de salidas</a>
             </div>
           </form>
         </div>
@@ -192,7 +214,7 @@
               <div class="result-pill">Pendiente</div>
               <h3 class="result-title">Todavía no has consultado disponibilidad</h3>
               <p class="result-copy">
-                Cuando revisemos la disponibilidad de esta salida, aquí verás el siguiente paso de tu reserva.
+                Cuando revisemos la disponibilidad, aquí verás el siguiente paso de tu reserva.
               </p>
             </div>
           </section>
@@ -205,7 +227,7 @@
             <div class="info-list">
               <div class="info-item">
                 <strong>1. Revisión</strong>
-                <span>Comprobamos la disponibilidad real de la salida seleccionada.</span>
+                <span>Comprobamos la disponibilidad real de la salida seleccionada o de tu propuesta.</span>
               </div>
               <div class="info-item">
                 <strong>2. Bloqueo temporal</strong>
@@ -229,6 +251,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=30"></script>
+  <script src="app.js?v=40"></script>
 </body>
 </html>
