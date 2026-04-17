@@ -1,6 +1,9 @@
 const API_URL_JOINABLE_DEPARTURES =
   "https://primary-production-beb9e.up.railway.app/webhook/ms-joinable-departures";
 
+const API_URL_ROUTES_CATALOG =
+  "https://primary-production-beb9e.up.railway.app/webhook/ms-routes-catalog";
+
 const API_URL_CHECK_AVAILABILITY =
   "https://primary-production-beb9e.up.railway.app/webhook/ms-check-availability";
 
@@ -45,6 +48,18 @@ const startTimeDisplayInput = document.getElementById("start_time_display");
 const showcaseGrid = document.getElementById("showcase-grid");
 const showcaseLoading = document.getElementById("showcase-loading");
 const showcaseEmpty = document.getElementById("showcase-empty");
+
+const manualActivityField = document.getElementById("field-activity-manual");
+const manualRouteField = document.getElementById("field-route-manual");
+const manualDateField = document.getElementById("field-date-manual");
+
+const readonlyActivityField = document.getElementById("field-activity-readonly");
+const readonlyDateField = document.getElementById("field-date-readonly");
+const readonlyTimeField = document.getElementById("field-time-readonly");
+
+const manualActivitySelect = document.getElementById("manual_activity_type");
+const manualRouteSelect = document.getElementById("manual_route_slug");
+const manualDateInput = document.getElementById("manual_date");
 
 const ACTIVITY_LABELS = {
   via_ferrata: "Vía ferrata",
@@ -178,6 +193,81 @@ async function getJoinableDepartures() {
   }
 
   return departuresArray;
+}
+
+async function getRoutesCatalog() {
+  const response = await fetch(API_URL_ROUTES_CATALOG, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const data = await safeJson(response, "catálogo de rutas");
+
+  if (!response.ok) {
+    throw new Error(data?.message || `HTTP ${response.status}`);
+  }
+
+  const routesArray = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.routes)
+      ? data.routes
+      : [];
+
+  if (!Array.isArray(routesArray)) {
+    throw new Error("El catálogo de rutas no tiene un formato válido.");
+  }
+
+  return routesArray;
+}
+
+function routeIsActive(route) {
+  const normalized = String(route?.active ?? "true").trim().toLowerCase();
+  return ["true", "1", "yes", "si", "sí", ""].includes(normalized);
+}
+
+function renderManualRoutes(routes, selectedActivity = "") {
+  if (!manualRouteSelect) return;
+
+  manualRouteSelect.innerHTML = `<option value="">Selecciona una ruta</option>`;
+
+  routes
+    .filter(route => routeIsActive(route))
+    .filter(route => !selectedActivity || String(route.activity_type || "").trim() === selectedActivity)
+    .sort((a, b) => String(a.route_name || "").localeCompare(String(b.route_name || ""), "es"))
+    .forEach(route => {
+      const option = document.createElement("option");
+      option.value = String(route.route_slug || "").trim();
+      option.textContent = String(route.route_name || "").trim();
+      option.dataset.activity = String(route.activity_type || "").trim();
+      manualRouteSelect.appendChild(option);
+    });
+}
+
+function enableManualMode() {
+  readonlyActivityField?.classList.add("is-hidden");
+  readonlyDateField?.classList.add("is-hidden");
+  readonlyTimeField?.classList.add("is-hidden");
+
+  manualActivityField?.classList.remove("is-hidden");
+  manualRouteField?.classList.remove("is-hidden");
+  manualDateField?.classList.remove("is-hidden");
+
+  if (selectedDepartureCard) {
+    selectedDepartureCard.innerHTML = `
+      <div class="result-pill">Reserva manual</div>
+      <h3 class="result-title">Programa tu propia salida</h3>
+      <p class="result-copy">
+        Elige actividad, ruta y fecha. Revisaremos la disponibilidad real y, si hay plaza, podrás continuar con tu reserva.
+      </p>
+    `;
+  }
+
+  if (checkBtn) {
+    checkBtn.disabled = false;
+  }
 }
 
 async function checkAvailability(payload) {
@@ -446,10 +536,10 @@ function renderShowcaseCard(departure) {
   const card = document.createElement("article");
   card.className = "showcase-card";
   card.style.backgroundImage = `url("${getActivityImage(
-  departure.activity_type,
-  departure.route_slug,
-  departure.image_url
-)}")`;
+    departure.activity_type,
+    departure.route_slug,
+    departure.image_url
+  )}")`;
 
   const priceText = formatPrice(departure.price_1_4, "EUR");
   const activityLabel = formatActivityLabel(departure.activity_type);
@@ -539,7 +629,7 @@ async function initShowcasePage() {
         <h3 class="result-title">No hemos podido cargar las salidas disponibles</h3>
         <p class="result-copy">${escapeHtml(error.message)}</p>
         <div class="result-actions">
-          <a href="salidas.html" class="link-button">Reintentar</a>
+          <a href="index.html" class="link-button">Reintentar</a>
         </div>
       `;
     }
@@ -583,7 +673,7 @@ function applyDepartureToReservationPage(departure) {
 
   activityInput.value = formatActivityLabel(departure.activity_type);
   dateDisplayInput.value = formatApiDate(departure.date);
-  startTimeDisplayInput.value = departure.start_time || "-";
+  startTimeDisplayInput.value = departure.start_time || "";
 
   const priceText = formatPrice(departure.price_1_4, "EUR");
 
@@ -646,7 +736,7 @@ function renderAvailabilityResult(data) {
       <div class="result-pill result-pill-error">Sin plazas</div>
       <h3 class="result-title">Ahora mismo no podemos confirmar esta salida</h3>
       <p class="result-copy">${escapeHtml(data.message || "La solicitud no es válida o no hay disponibilidad.")}</p>
-      <p class="helper-text">Prueba con otra salida desde el escaparate.</p>
+      <p class="helper-text">Prueba con otra salida desde el escaparate o elige otra fecha.</p>
     `;
     renderDebug("CHECK AVAILABILITY RESPONSE", data);
     resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -924,15 +1014,30 @@ if (form) {
     checkoutData = null;
 
     try {
-      const route_slug = routeSlugInput?.value?.trim() || "";
-      const activity_type = activityTypeValueInput?.value?.trim() || "";
-      const date = dateValueInput?.value || "";
-      const start_time = startTimeValueInput?.value || "";
+      const params = new URLSearchParams(window.location.search);
+      const isManualMode = params.get("manual") === "1";
+
+      let route_slug = routeSlugInput?.value?.trim() || "";
+      let activity_type = activityTypeValueInput?.value?.trim() || "";
+      let date = dateValueInput?.value || "";
+      let start_time = startTimeValueInput?.value || "";
       const pax = Number(document.getElementById("pax").value);
       const customer_name = document.getElementById("customer_name").value.trim();
       const customer_phone = getNormalizedPhoneNumber();
       const customer_email = document.getElementById("customer_email").value.trim();
       const language = document.getElementById("language").value;
+
+      if (isManualMode) {
+        activity_type = manualActivitySelect?.value?.trim() || "";
+        route_slug = manualRouteSelect?.value?.trim() || "";
+        date = manualDateInput?.value || "";
+        start_time = "10:00";
+
+        activityTypeValueInput.value = activity_type;
+        routeSlugInput.value = route_slug;
+        dateValueInput.value = date;
+        startTimeValueInput.value = start_time;
+      }
 
       validateFormBeforeSubmit({
         route_slug,
@@ -963,7 +1068,7 @@ if (form) {
       resultBox.className = "result-box empty";
       resultBox.innerHTML = `
         <div class="result-pill">Comprobando</div>
-        <h3 class="result-title">Estamos revisando la salida seleccionada</h3>
+        <h3 class="result-title">Estamos revisando la disponibilidad</h3>
         <p class="result-copy">Un momento, estamos comprobando la disponibilidad real de tu aventura…</p>
       `;
 
@@ -990,7 +1095,15 @@ if (form) {
       renderError(error.message);
       console.error("CHECK AVAILABILITY ERROR:", error);
     } finally {
-      checkBtn.disabled = !routeSlugInput?.value;
+      const params = new URLSearchParams(window.location.search);
+      const isManualMode = params.get("manual") === "1";
+
+      if (isManualMode) {
+        checkBtn.disabled = false;
+      } else {
+        checkBtn.disabled = !routeSlugInput?.value;
+      }
+
       checkBtn.textContent = "Ver disponibilidad y reservar";
     }
   });
@@ -1029,13 +1142,39 @@ if (phoneLocalInput) {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   if (showcaseGrid) {
     initShowcasePage();
   }
 
   if (selectedDepartureCard) {
-    applyDepartureToReservationPage(getDepartureParams());
+    const params = new URLSearchParams(window.location.search);
+    const isManualMode = params.get("manual") === "1";
+
+    if (isManualMode) {
+      enableManualMode();
+
+      try {
+        const routes = await getRoutesCatalog();
+        renderManualRoutes(routes);
+
+        manualActivitySelect?.addEventListener("change", () => {
+          renderManualRoutes(routes, manualActivitySelect.value);
+        });
+
+        manualRouteSelect?.addEventListener("change", () => {
+          const selected = manualRouteSelect.options[manualRouteSelect.selectedIndex];
+          const activity = selected?.dataset?.activity || "";
+          if (manualActivitySelect && activity) {
+            manualActivitySelect.value = activity;
+          }
+        });
+      } catch (error) {
+        console.error("MANUAL ROUTES ERROR:", error);
+      }
+    } else {
+      applyDepartureToReservationPage(getDepartureParams());
+    }
   }
 
   getClientIpAddress();
