@@ -91,6 +91,16 @@ function formatActivityLabel(activityType) {
   return ACTIVITY_LABELS[activityType] || activityType || "";
 }
 
+function normalizeActivityValue(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/-+/g, "_");
+}
+
 function formatApiDate(dateString) {
   if (!dateString) return "-";
   const parts = String(dateString).split("-");
@@ -210,22 +220,32 @@ async function getRoutesCatalog() {
     throw new Error(data?.message || `HTTP ${response.status}`);
   }
 
-  const routesArray = Array.isArray(data)
-    ? data
-    : Array.isArray(data?.routes)
-      ? data.routes
-      : [];
+  let routesArray = [];
 
-  if (!Array.isArray(routesArray)) {
+  if (Array.isArray(data)) {
+    routesArray = data;
+  } else if (Array.isArray(data?.routes)) {
+    routesArray = data.routes;
+  } else if (Array.isArray(data?.items)) {
+    routesArray = data.items;
+  } else {
     throw new Error("El catálogo de rutas no tiene un formato válido.");
   }
+
+  renderDebug("ROUTES CATALOG RESPONSE", data);
 
   return routesArray;
 }
 
 function routeIsActive(route) {
-  const normalized = String(route?.active ?? "true").trim().toLowerCase();
-  return ["true", "1", "yes", "si", "sí", ""].includes(normalized);
+  const raw = route?.active;
+
+  if (raw === true) return true;
+  if (raw === false) return false;
+  if (raw === null || typeof raw === "undefined" || raw === "") return true;
+
+  const normalized = String(raw).trim().toLowerCase();
+  return ["true", "1", "yes", "si", "sí"].includes(normalized);
 }
 
 function renderManualRoutes(routes, selectedActivity = "") {
@@ -233,17 +253,39 @@ function renderManualRoutes(routes, selectedActivity = "") {
 
   manualRouteSelect.innerHTML = `<option value="">Selecciona una ruta</option>`;
 
-  routes
+  const normalizedSelectedActivity = normalizeActivityValue(selectedActivity);
+
+  const filteredRoutes = routes
     .filter(route => routeIsActive(route))
-    .filter(route => !selectedActivity || String(route.activity_type || "").trim() === selectedActivity)
-    .sort((a, b) => String(a.route_name || "").localeCompare(String(b.route_name || ""), "es"))
-    .forEach(route => {
-      const option = document.createElement("option");
-      option.value = String(route.route_slug || "").trim();
-      option.textContent = String(route.route_name || "").trim();
-      option.dataset.activity = String(route.activity_type || "").trim();
-      manualRouteSelect.appendChild(option);
-    });
+    .filter(route => {
+      if (!normalizedSelectedActivity) return true;
+
+      const routeActivity = normalizeActivityValue(route?.activity_type || "");
+      return routeActivity === normalizedSelectedActivity;
+    })
+    .filter(route => {
+      return String(route?.route_slug || "").trim() && String(route?.route_name || "").trim();
+    })
+    .sort((a, b) =>
+      String(a?.route_name || "").localeCompare(String(b?.route_name || ""), "es")
+    );
+
+  filteredRoutes.forEach(route => {
+    const option = document.createElement("option");
+    option.value = String(route.route_slug || "").trim();
+    option.textContent = String(route.route_name || "").trim();
+    option.dataset.activity = normalizeActivityValue(route.activity_type || "");
+    manualRouteSelect.appendChild(option);
+  });
+
+  if (filteredRoutes.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = normalizedSelectedActivity
+      ? "No hay rutas disponibles para esta actividad"
+      : "No hay rutas disponibles";
+    manualRouteSelect.appendChild(option);
+  }
 }
 
 function enableManualMode() {
@@ -1028,7 +1070,7 @@ if (form) {
       const language = document.getElementById("language").value;
 
       if (isManualMode) {
-        activity_type = manualActivitySelect?.value?.trim() || "";
+        activity_type = normalizeActivityValue(manualActivitySelect?.value || "");
         route_slug = manualRouteSelect?.value?.trim() || "";
         date = manualDateInput?.value || "";
         start_time = "10:00";
@@ -1159,18 +1201,41 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderManualRoutes(routes);
 
         manualActivitySelect?.addEventListener("change", () => {
-          renderManualRoutes(routes, manualActivitySelect.value);
+          const selectedActivity = normalizeActivityValue(manualActivitySelect.value);
+          renderManualRoutes(routes, selectedActivity);
+
+          routeSlugInput.value = "";
+          activityTypeValueInput.value = selectedActivity || "";
         });
 
         manualRouteSelect?.addEventListener("change", () => {
-          const selected = manualRouteSelect.options[manualRouteSelect.selectedIndex];
-          const activity = selected?.dataset?.activity || "";
-          if (manualActivitySelect && activity) {
-            manualActivitySelect.value = activity;
-          }
+          const selected =
+            manualRouteSelect.options[manualRouteSelect.selectedIndex];
+          const activity =
+            selected?.dataset?.activity ||
+            normalizeActivityValue(manualActivitySelect?.value || "");
+
+          routeSlugInput.value = manualRouteSelect.value || "";
+          activityTypeValueInput.value = activity || "";
         });
       } catch (error) {
         console.error("MANUAL ROUTES ERROR:", error);
+        renderDebug("MANUAL ROUTES ERROR", { message: error.message });
+
+        if (manualRouteSelect) {
+          manualRouteSelect.innerHTML = `<option value="">Error cargando rutas</option>`;
+        }
+
+        if (selectedDepartureCard) {
+          selectedDepartureCard.innerHTML = `
+            <div class="result-pill result-pill-error">Error</div>
+            <h3 class="result-title">No hemos podido cargar las rutas</h3>
+            <p class="result-copy">${escapeHtml(error.message)}</p>
+            <div class="result-actions">
+              <a href="index.html" class="link-button">Volver al escaparate</a>
+            </div>
+          `;
+        }
       }
     } else {
       applyDepartureToReservationPage(getDepartureParams());
